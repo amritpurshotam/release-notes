@@ -50,6 +50,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assembla\ApiKeys.cs" />
+    <Compile Include="ApiKeys.cs" />
     <Compile Include="Assembla\CustomFields.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
