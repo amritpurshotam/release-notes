@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
 using LibGit2Sharp;
+using RestSharp;
 
 namespace ReleaseNotes
 {
@@ -11,19 +11,18 @@ namespace ReleaseNotes
         static void Main(string[] args)
         {
             var repo = new Repository(@"C:\Development\easy-equities");
-            var latestTag = repo.Tags.OrderByDescending(x => x.FriendlyName).First();
-            var lastCommitOnMaster = repo.Commits.Single(x => x.Sha.Equals(latestTag.Target.Sha));
+
+            var filter = new CommitFilter
+            {
+                IncludeReachableFrom = repo.Branches["origin/develop"],
+                ExcludeReachableFrom = repo.Branches["origin/master"]
+            };
+            var commits = repo.Commits.QueryBy(filter);
 
             var numberOfCommits = 0;
-
             var ticketNumbers = new List<string>();
-            foreach (var commit in repo.Commits)
+            foreach (var commit in commits)
             {
-                if (commit.Sha.Equals(lastCommitOnMaster.Sha))
-                {
-                    break;
-                }
-
                 var matches = Regex.Matches(commit.MessageShort, "#\\d+");
                 foreach (Match match in matches)
                 {
@@ -34,13 +33,29 @@ namespace ReleaseNotes
                 numberOfCommits++;
             }
 
-            var lastCommit = repo.Commits.OrderByDescending(x => x.Committer.When).First();
-            var changes = repo.Diff.Compare<TreeChanges>(lastCommitOnMaster.Tree, lastCommit.Tree);
+            var points = 0;
+            var client = new RestClient("https://api.assembla.com/v1");
+            foreach (var ticketNumber in ticketNumbers)
+            {
+                var request = new RestRequest(string.Format("spaces/{0}/tickets/{1}", ApiKeys.AssemblaSpaceId, ticketNumber));
+                request.AddHeader("X-Api-Key", ApiKeys.AssemblaApiKey);
+                request.AddHeader("X-Api-Secret", ApiKeys.AssemblaApiSecret);
+
+                var ticket = client.Execute<Ticket>(request);
+                if (ticket.ResponseStatus != ResponseStatus.Completed)
+                {
+                    continue;
+                }
+
+                points += ticket.Data.total_estimate;
+                Console.WriteLine("[#{1}]({2}{1}) {0}", ticket.Data.summary, ticketNumber, "https://entelect.assembla.com/spaces/easy-equities/tickets/");
+            }
+
             Console.WriteLine("Stats for nerds: ");
-            Console.WriteLine("Files changed: " + changes.Count);
-            Console.WriteLine("Commits since last release: " + numberOfCommits);
+            Console.WriteLine("New commits in release: " + numberOfCommits);
             Console.WriteLine("Tickets completed: " + ticketNumbers.Count);
-            // Total points
+            Console.WriteLine("Total points: " + points);
+
             repo.Dispose();
 
             Console.ReadLine();
