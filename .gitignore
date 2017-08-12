@@ -6,7 +6,7 @@
 *.user
 *.sln.docstates
 
-ReleaseNotes/ApiKeys.cs
+# ReleaseNotes/ApiKeys.cs
 
 # Build results
 
