@@ -11,19 +11,14 @@ namespace ReleaseNotes
     {
         static void Main(string[] args)
         {
-            var repo = new Repository(@"C:\Development\easy-equities");
-
+            var repo = new Repository(args[0]);
             Pull(repo);
-            var commits = GetNewCommits(repo);
 
             var numberOfCommits = 0;
+            var commits = GetNewCommits(repo);
             var ticketNumbers = GetTicketNumbers(commits, ref numberOfCommits);
 
-            repo.Dispose();
-
             GenerateReleaseNotes(ticketNumbers, numberOfCommits);
-            
-            Console.ReadLine();
         }
 
         private static List<string> GetTicketNumbers(ICommitLog commits, ref int numberOfCommits)
@@ -45,11 +40,9 @@ namespace ReleaseNotes
 
         private static void GenerateReleaseNotes(List<string> ticketNumbers, int numberOfCommits)
         {
-            Console.Write("### Release Notes");
-            Console.WriteLine();
-
             var points = 0;
             var client = new RestClient("https://api.assembla.com/v1");
+
             foreach (var ticketNumber in ticketNumbers)
             {
                 var ticket = GetAssemblaTicket(ticketNumber, client);
@@ -59,7 +52,7 @@ namespace ReleaseNotes
                 }
 
                 points += ticket.Data.total_estimate;
-                Console.WriteLine("[#{1}]({2}{1}) {0}<br/>", ticket.Data.summary, ticketNumber, "https://entelect.assembla.com/spaces/easy-equities/tickets/");
+                Console.WriteLine("[#{0}](https://purplegroup.assembla.com/spaces/software-development-backlog/tickets/{0}) - {1}", ticketNumber, ticket.Data.summary);
             }
 
             GenerateStats(numberOfCommits, ticketNumbers.Count, points);
@@ -67,11 +60,10 @@ namespace ReleaseNotes
 
         private static void GenerateStats(int numberOfCommits, int numberOfTickets, int points)
         {
-            Console.WriteLine("#### Stats");
             Console.WriteLine();
-            Console.WriteLine("Commits : {0}<br/>", numberOfCommits);
-            Console.WriteLine("Tickets : {0}<br/>", numberOfTickets);
-            Console.WriteLine("Points  : {0}", points);
+            Console.WriteLine("Commits: {0}.", numberOfCommits);
+            Console.WriteLine("Tickets: {0}.", numberOfTickets);
+            Console.WriteLine("Points: {0}.", points);
         }
 
         private static IRestResponse<Ticket> GetAssemblaTicket(string ticketNumber, RestClient client)
