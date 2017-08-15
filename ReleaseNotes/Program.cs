@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
@@ -35,6 +36,7 @@ namespace ReleaseNotes
 
                 numberOfCommits++;
             }
+
             return ticketNumbers;
         }
 
@@ -43,6 +45,7 @@ namespace ReleaseNotes
             var points = 0;
             var client = new RestClient("https://api.assembla.com/v1");
 
+            ticketNumbers = ticketNumbers.OrderBy(x => x).ToList();
             foreach (var ticketNumber in ticketNumbers)
             {
                 var ticket = GetAssemblaTicket(ticketNumber, client);
