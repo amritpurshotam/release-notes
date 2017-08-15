@@ -52,7 +52,10 @@ namespace ReleaseNotes
                 }
 
                 points += ticket.Data.total_estimate;
-                Console.WriteLine("[#{0}](https://purplegroup.assembla.com/spaces/software-development-backlog/tickets/{0}) - {1}", ticketNumber, ticket.Data.summary);
+
+                const string twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph = "  ";
+                Console.WriteLine("[#{0}](https://purplegroup.assembla.com/spaces/software-development-backlog/tickets/{0}) - {1}{2}", 
+                    ticketNumber, ticket.Data.summary, twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph);
             }
 
             GenerateStats(numberOfCommits, ticketNumbers.Count, points);
