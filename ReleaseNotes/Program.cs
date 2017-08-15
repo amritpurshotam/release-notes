@@ -61,9 +61,7 @@ namespace ReleaseNotes
         private static void GenerateStats(int numberOfCommits, int numberOfTickets, int points)
         {
             Console.WriteLine();
-            Console.WriteLine("Commits: {0}.", numberOfCommits);
-            Console.WriteLine("Tickets: {0}.", numberOfTickets);
-            Console.WriteLine("Points: {0}.", points);
+            Console.WriteLine("Commits: {0}. Tickets: {1}. Points: {2}.", numberOfCommits, numberOfTickets, points);
         }
 
         private static IRestResponse<Ticket> GetAssemblaTicket(string ticketNumber, RestClient client)
