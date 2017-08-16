@@ -57,8 +57,9 @@ namespace ReleaseNotes
                 points += ticket.Data.total_estimate;
 
                 const string twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph = "  ";
-                Console.WriteLine("[#{0}](https://purplegroup.assembla.com/spaces/software-development-backlog/tickets/{0}) - {1}{2}", 
-                    ticketNumber, ticket.Data.summary, twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph);
+                Console.WriteLine("[#{0}](https://{1}.assembla.com/spaces/{2}/tickets/{0}) - {3}{4}", 
+                    ticketNumber, Settings.AssemblaSubDomain, Settings.AssemblaSpaceName, 
+                    ticket.Data.summary, twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph);
             }
 
             GenerateStats(numberOfCommits, ticketNumbers.Count, points);
@@ -72,9 +73,9 @@ namespace ReleaseNotes
 
         private static IRestResponse<Ticket> GetAssemblaTicket(string ticketNumber, RestClient client)
         {
-            var request = new RestRequest(string.Format("spaces/{0}/tickets/{1}", Keys.AssemblaSpaceId, ticketNumber));
-            request.AddHeader("X-Api-Key", Keys.AssemblaApiKey);
-            request.AddHeader("X-Api-Secret", Keys.AssemblaApiSecret);
+            var request = new RestRequest(string.Format("spaces/{0}/tickets/{1}", Settings.AssemblaSpaceId, ticketNumber));
+            request.AddHeader("X-Api-Key", Settings.AssemblaApiKey);
+            request.AddHeader("X-Api-Secret", Settings.AssemblaApiSecret);
 
             var ticket = client.Execute<Ticket>(request);
             return ticket;
@@ -101,12 +102,12 @@ namespace ReleaseNotes
                         (url, usernameFromUrl, types) =>
                             new UsernamePasswordCredentials()
                             {
-                                Username = Keys.GitUserName,
-                                Password = Keys.GitPassword
+                                Username = Settings.GitUserName,
+                                Password = Settings.GitPassword
                             })
                 }
             };
-            Commands.Pull(repo, new Signature(Keys.GitUserName, Keys.EmailAddress, new DateTimeOffset(DateTime.Now)), options);
+            Commands.Pull(repo, new Signature(Settings.GitUserName, Settings.EmailAddress, new DateTimeOffset(DateTime.Now)), options);
         }
     }
 }

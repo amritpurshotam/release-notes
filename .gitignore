@@ -6,7 +6,7 @@
 *.user
 *.sln.docstates
 
-ReleaseNotes/Keys.cs
+ReleaseNotes/Settings.config
 
 # Build results
 
