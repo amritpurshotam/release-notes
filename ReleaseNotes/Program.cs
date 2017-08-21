@@ -22,16 +22,19 @@ namespace ReleaseNotes
             GenerateReleaseNotes(ticketNumbers, numberOfCommits);
         }
 
-        private static List<string> GetTicketNumbers(ICommitLog commits, ref int numberOfCommits)
+        private static List<int> GetTicketNumbers(ICommitLog commits, ref int numberOfCommits)
         {
-            var ticketNumbers = new List<string>();
+            var ticketNumbers = new List<int>();
             foreach (var commit in commits)
             {
                 var matches = Regex.Matches(commit.MessageShort, "#\\d+");
                 foreach (Match match in matches)
                 {
-                    var ticketNumber = match.Value.Replace("#", "");
-                    ticketNumbers.Add(ticketNumber);
+                    int ticketNumber;
+                    if (Int32.TryParse(match.Value.Replace("#", ""), out ticketNumber))
+                    {
+                        ticketNumbers.Add(ticketNumber);
+                    }
                 }
 
                 numberOfCommits++;
@@ -40,7 +43,7 @@ namespace ReleaseNotes
             return ticketNumbers;
         }
 
-        private static void GenerateReleaseNotes(List<string> ticketNumbers, int numberOfCommits)
+        private static void GenerateReleaseNotes(List<int> ticketNumbers, int numberOfCommits)
         {
             var points = 0;
             var client = new RestClient("https://api.assembla.com/v1");
@@ -71,7 +74,7 @@ namespace ReleaseNotes
             Console.WriteLine("Commits: {0}. Tickets: {1}. Points: {2}.", numberOfCommits, numberOfTickets, points);
         }
 
-        private static IRestResponse<Ticket> GetAssemblaTicket(string ticketNumber, RestClient client)
+        private static IRestResponse<Ticket> GetAssemblaTicket(int ticketNumber, RestClient client)
         {
             var request = new RestRequest(string.Format("spaces/{0}/tickets/{1}", Settings.AssemblaSpaceId, ticketNumber));
             request.AddHeader("X-Api-Key", Settings.AssemblaApiKey);
