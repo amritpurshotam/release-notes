@@ -12,14 +12,17 @@ namespace ReleaseNotes
     {
         static void Main(string[] args)
         {
-            var repo = new Repository(args[0]);
+            var gitRespositoryPath = args[0];
+            var assemblaSpaceId = args[1];
+
+            var repo = new Repository(gitRespositoryPath);
             Pull(repo);
 
             var numberOfCommits = 0;
             var commits = GetNewCommits(repo);
             var ticketNumbers = GetTicketNumbers(commits, ref numberOfCommits);
 
-            GenerateReleaseNotes(ticketNumbers, numberOfCommits);
+            GenerateReleaseNotes(ticketNumbers, assemblaSpaceId, numberOfCommits);
         }
 
         private static List<int> GetTicketNumbers(ICommitLog commits, ref int numberOfCommits)
@@ -43,26 +46,30 @@ namespace ReleaseNotes
             return ticketNumbers;
         }
 
-        private static void GenerateReleaseNotes(List<int> ticketNumbers, int numberOfCommits)
+        private static void GenerateReleaseNotes(List<int> ticketNumbers, string assemblaSpaceId, int numberOfCommits)
         {
             var points = 0;
             var client = new RestClient("https://api.assembla.com/v1");
 
-            ticketNumbers = ticketNumbers.OrderBy(x => x).ToList();
-            foreach (var ticketNumber in ticketNumbers)
+            var space = GetAssemblaSpace(assemblaSpaceId, client);
+            if (space.ResponseStatus == ResponseStatus.Completed)
             {
-                var ticket = GetAssemblaTicket(ticketNumber, client);
-                if (ticket.ResponseStatus != ResponseStatus.Completed)
+                ticketNumbers = ticketNumbers.OrderBy(x => x).ToList();
+                foreach (var ticketNumber in ticketNumbers)
                 {
-                    continue;
+                    var ticket = GetAssemblaTicket(ticketNumber, assemblaSpaceId, client);
+                    if (ticket.ResponseStatus != ResponseStatus.Completed)
+                    {
+                        continue;
+                    }
+
+                    points += ticket.Data.total_estimate;
+
+                    const string twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph = "  ";
+                    Console.WriteLine("[#{0}](https://{1}.assembla.com/spaces/{2}/tickets/{0}) - {3}{4}",
+                        ticketNumber, Settings.AssemblaSubDomain, space.Data.wiki_name,
+                        ticket.Data.summary, twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph);
                 }
-
-                points += ticket.Data.total_estimate;
-
-                const string twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph = "  ";
-                Console.WriteLine("[#{0}](https://{1}.assembla.com/spaces/{2}/tickets/{0}) - {3}{4}", 
-                    ticketNumber, Settings.AssemblaSubDomain, Settings.AssemblaSpaceName, 
-                    ticket.Data.summary, twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph);
             }
 
             GenerateStats(numberOfCommits, ticketNumbers.Count, points);
@@ -74,9 +81,19 @@ namespace ReleaseNotes
             Console.WriteLine("Commits: {0}. Tickets: {1}. Points: {2}.", numberOfCommits, numberOfTickets, points);
         }
 
-        private static IRestResponse<Ticket> GetAssemblaTicket(int ticketNumber, RestClient client)
+        private static IRestResponse<Space> GetAssemblaSpace(string assemblaSpaceId, RestClient client)
         {
-            var request = new RestRequest(string.Format("spaces/{0}/tickets/{1}", Settings.AssemblaSpaceId, ticketNumber));
+            var request = new RestRequest(string.Format("spaces/{0}", assemblaSpaceId));
+            request.AddHeader("X-Api-Key", Settings.AssemblaApiKey);
+            request.AddHeader("X-Api-Secret", Settings.AssemblaApiSecret);
+
+            var space = client.Execute<Space>(request);
+            return space;
+        }
+
+        private static IRestResponse<Ticket> GetAssemblaTicket(int ticketNumber, string assemblaSpaceId, RestClient client)
+        {
+            var request = new RestRequest(string.Format("spaces/{0}/tickets/{1}", assemblaSpaceId, ticketNumber));
             request.AddHeader("X-Api-Key", Settings.AssemblaApiKey);
             request.AddHeader("X-Api-Secret", Settings.AssemblaApiSecret);
 

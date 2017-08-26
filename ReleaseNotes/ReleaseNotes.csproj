@@ -52,6 +52,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assembla\Space.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Assembla\CustomFields.cs" />
     <Compile Include="Program.cs" />
