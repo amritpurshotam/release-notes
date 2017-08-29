@@ -14,12 +14,13 @@ namespace ReleaseNotes
         {
             var gitRespositoryPath = args[0];
             var assemblaSpaceId = args[1];
+            var branch = args[2];
 
             var repo = new Repository(gitRespositoryPath);
             Pull(repo);
 
             var numberOfCommits = 0;
-            var commits = GetNewCommits(repo);
+            var commits = GetNewCommits(repo, branch);
             var ticketNumbers = GetTicketNumbers(commits, ref numberOfCommits);
 
             GenerateReleaseNotes(ticketNumbers, assemblaSpaceId, numberOfCommits);
@@ -101,11 +102,11 @@ namespace ReleaseNotes
             return ticket;
         }
 
-        private static ICommitLog GetNewCommits(Repository repo)
+        private static ICommitLog GetNewCommits(Repository repo, string branch)
         {
             var filter = new CommitFilter
             {
-                IncludeReachableFrom = repo.Branches["origin/develop"],
+                IncludeReachableFrom = repo.Branches[string.Format("origin/{0}", branch)],
                 ExcludeReachableFrom = repo.Branches["origin/master"]
             };
             var commits = repo.Commits.QueryBy(filter);
