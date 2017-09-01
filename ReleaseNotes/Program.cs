@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
@@ -65,15 +66,22 @@ namespace ReleaseNotes
                     }
 
                     points += ticket.Data.total_estimate;
+                    var ticketSummary = RemoveDoubleQuotesFrom(ticket.Data.summary);
 
                     const string twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph = "  ";
                     Console.WriteLine("[#{0}](https://{1}.assembla.com/spaces/{2}/tickets/{0}) - {3}{4}",
                         ticketNumber, Settings.AssemblaSubDomain, space.Data.wiki_name,
-                        ticket.Data.summary, twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph);
+                        ticketSummary, twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph);
                 }
             }
 
             GenerateStats(numberOfCommits, ticketNumbers.Count, points);
+        }
+
+        private static string RemoveDoubleQuotesFrom(string note)
+        {
+            // powershell cannot convert strings to json with double quotes resulting in the Slack message not being sent
+            return note.Replace("\"", "");
         }
 
         private static void GenerateStats(int numberOfCommits, int numberOfTickets, int points)
