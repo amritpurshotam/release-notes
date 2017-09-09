@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
@@ -13,11 +12,11 @@ namespace ReleaseNotes
     {
         static void Main(string[] args)
         {
-            var gitRespositoryPath = args[0];
+            var gitRepositoryPath = args[0];
             var assemblaSpaceId = args[1];
             var branch = args[2];
 
-            var repo = new Repository(gitRespositoryPath);
+            var repo = new Repository(gitRepositoryPath);
             Pull(repo);
 
             var numberOfCommits = 0;
@@ -32,7 +31,12 @@ namespace ReleaseNotes
             var ticketNumbers = new List<int>();
             foreach (var commit in commits)
             {
-                var matches = Regex.Matches(commit.MessageShort, "#\\d+");
+                if (commit.Message.Contains("Merge pull request"))
+                {
+                    continue;
+                }
+
+                var matches = Regex.Matches(commit.Message, "#\\d+");
                 foreach (Match match in matches)
                 {
                     int ticketNumber;
