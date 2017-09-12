@@ -49,7 +49,7 @@ namespace ReleaseNotes
                 numberOfCommits++;
             }
 
-            return ticketNumbers;
+            return ticketNumbers.Distinct().ToList();
         }
 
         private static void GenerateReleaseNotes(List<int> ticketNumbers, string assemblaSpaceId, int numberOfCommits)
