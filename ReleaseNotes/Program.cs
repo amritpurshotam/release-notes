@@ -31,12 +31,14 @@ namespace ReleaseNotes
             var ticketNumbers = new List<int>();
             foreach (var commit in commits)
             {
-                if (commit.Message.Contains("Merge pull request"))
+                var message = commit.Message;
+                var pullRequestMatches = Regex.Matches(commit.Message, "Merge pull request #\\d+");
+                foreach (Match pullRequestMatch in pullRequestMatches)
                 {
-                    continue;
+                    message = message.Replace(pullRequestMatch.Value, "");
                 }
 
-                var matches = Regex.Matches(commit.Message, "#\\d+");
+                var matches = Regex.Matches(message, "#\\d+");
                 foreach (Match match in matches)
                 {
                     int ticketNumber;
