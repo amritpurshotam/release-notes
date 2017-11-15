@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
@@ -59,6 +60,7 @@ namespace ReleaseNotes
             var points = 0;
             var client = new RestClient("https://api.assembla.com/v1");
 
+            var successfulTicketCount = 0;
             var space = GetAssemblaSpace(assemblaSpaceId, client);
             if (space.ResponseStatus == ResponseStatus.Completed)
             {
@@ -66,11 +68,12 @@ namespace ReleaseNotes
                 foreach (var ticketNumber in ticketNumbers)
                 {
                     var ticket = GetAssemblaTicket(ticketNumber, assemblaSpaceId, client);
-                    if (ticket.ResponseStatus != ResponseStatus.Completed)
+                    if (ticket.StatusCode != HttpStatusCode.OK)
                     {
                         continue;
                     }
 
+                    successfulTicketCount++;
                     points += ticket.Data.total_estimate;
                     var ticketSummary = RemoveDoubleQuotesFrom(ticket.Data.summary);
 
@@ -81,7 +84,7 @@ namespace ReleaseNotes
                 }
             }
 
-            GenerateStats(numberOfCommits, ticketNumbers.Count, points);
+            GenerateStats(numberOfCommits, successfulTicketCount, points);
         }
 
         private static string RemoveDoubleQuotesFrom(string note)
