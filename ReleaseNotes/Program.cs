@@ -24,7 +24,8 @@ namespace ReleaseNotes
             var commits = GetNewCommits(repo, branch);
             var ticketNumbers = GetTicketNumbers(commits, ref numberOfCommits);
 
-            GenerateReleaseNotes(ticketNumbers, assemblaSpaceId, numberOfCommits);
+            var lastCommit = repo.Commits.First();
+            GenerateReleaseNotes(ticketNumbers, assemblaSpaceId, numberOfCommits, lastCommit.Sha);
         }
 
         private static List<int> GetTicketNumbers(ICommitLog commits, ref int numberOfCommits)
@@ -55,8 +56,10 @@ namespace ReleaseNotes
             return ticketNumbers.Distinct().ToList();
         }
 
-        private static void GenerateReleaseNotes(List<int> ticketNumbers, string assemblaSpaceId, int numberOfCommits)
+        private static void GenerateReleaseNotes(List<int> ticketNumbers, string assemblaSpaceId, int numberOfCommits, string lastCommitHash)
         {
+            ServicePointManager.Expect100Continue = true;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             var points = 0;
             var client = new RestClient("https://api.assembla.com/v1");
 
@@ -84,7 +87,7 @@ namespace ReleaseNotes
                 }
             }
 
-            GenerateStats(numberOfCommits, successfulTicketCount, points);
+            GenerateStats(numberOfCommits, successfulTicketCount, lastCommitHash);
         }
 
         private static string RemoveDoubleQuotesFrom(string note)
@@ -93,10 +96,11 @@ namespace ReleaseNotes
             return note.Replace("\"", "");
         }
 
-        private static void GenerateStats(int numberOfCommits, int numberOfTickets, int points)
+        private static void GenerateStats(int numberOfCommits, int numberOfTickets, string lastCommitHash)
         {
             Console.WriteLine();
-            Console.WriteLine("Commits: {0}. Tickets: {1}. Points: {2}.", numberOfCommits, numberOfTickets, points);
+            Console.WriteLine("Commits: {0}. Tickets: {1}.", numberOfCommits, numberOfTickets);
+            Console.WriteLine("Hash: {0}", lastCommitHash);
         }
 
         private static IRestResponse<Space> GetAssemblaSpace(string assemblaSpaceId, RestClient client)
