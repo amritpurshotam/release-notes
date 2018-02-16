@@ -21,8 +21,6 @@ namespace ReleaseNotes
             var statistics = new Statistics(commits);
 
             GenerateReleaseNotes(statistics, assemblaSpaceId);
-
-            Console.ReadLine();
         }
 
         private static ICommitLog GetNewCommitsFrom(Repository repo, string branch)
