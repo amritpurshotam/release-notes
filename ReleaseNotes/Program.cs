@@ -10,9 +10,9 @@ namespace ReleaseNotes
     {
         static void Main(string[] args)
         {
-            var gitRepositoryPath = "C:\\Development\\easyequities";
-            var assemblaSpaceId = "dY1u76DDur54kQdmr6bg7m";
-            var branch = "develop";
+            var gitRepositoryPath = args[0];
+            var assemblaSpaceId = args[1];
+            var branch = args[2];
 
             var repo = new Repository(gitRepositoryPath);
             Pull(repo);
