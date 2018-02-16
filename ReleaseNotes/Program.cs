@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Text.RegularExpressions;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 using RestSharp;
@@ -13,71 +10,51 @@ namespace ReleaseNotes
     {
         static void Main(string[] args)
         {
-            var gitRepositoryPath = args[0];
-            var assemblaSpaceId = args[1];
-            var branch = args[2];
+            var gitRepositoryPath = "C:\\Development\\easyequities";
+            var assemblaSpaceId = "dY1u76DDur54kQdmr6bg7m";
+            var branch = "develop";
 
             var repo = new Repository(gitRepositoryPath);
             Pull(repo);
 
-            var numberOfCommits = 0;
-            var commits = GetNewCommits(repo, branch);
-            var ticketNumbers = GetTicketNumbers(commits, ref numberOfCommits);
+            var commits = GetNewCommitsFrom(repo, branch);
+            var statistics = new Statistics(commits);
 
-            var lastCommit = repo.Commits.First();
-            GenerateReleaseNotes(ticketNumbers, assemblaSpaceId, numberOfCommits, lastCommit.Sha);
+            GenerateReleaseNotes(statistics, assemblaSpaceId);
+
+            Console.ReadLine();
         }
 
-        private static List<int> GetTicketNumbers(ICommitLog commits, ref int numberOfCommits)
+        private static ICommitLog GetNewCommitsFrom(Repository repo, string branch)
         {
-            var ticketNumbers = new List<int>();
-            foreach (var commit in commits)
+            var filter = new CommitFilter
             {
-                var message = commit.Message;
-                var pullRequestMatches = Regex.Matches(commit.Message, "Merge pull request #\\d+");
-                foreach (Match pullRequestMatch in pullRequestMatches)
-                {
-                    message = message.Replace(pullRequestMatch.Value, "");
-                }
-
-                var matches = Regex.Matches(message, "#\\d+");
-                foreach (Match match in matches)
-                {
-                    int ticketNumber;
-                    if (Int32.TryParse(match.Value.Replace("#", ""), out ticketNumber))
-                    {
-                        ticketNumbers.Add(ticketNumber);
-                    }
-                }
-
-                numberOfCommits++;
-            }
-
-            return ticketNumbers.Distinct().ToList();
+                IncludeReachableFrom = repo.Branches[string.Format("origin/{0}", branch)],
+                ExcludeReachableFrom = repo.Branches["origin/master"]
+            };
+            var commits = repo.Commits.QueryBy(filter);
+            return commits;
         }
 
-        private static void GenerateReleaseNotes(List<int> ticketNumbers, string assemblaSpaceId, int numberOfCommits, string lastCommitHash)
+        private static void GenerateReleaseNotes(Statistics statistics, string assemblaSpaceId)
         {
             ServicePointManager.Expect100Continue = true;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            var points = 0;
             var client = new RestClient("https://api.assembla.com/v1");
 
-            var successfulTicketCount = 0;
             var space = GetAssemblaSpace(assemblaSpaceId, client);
             if (space.ResponseStatus == ResponseStatus.Completed)
             {
-                ticketNumbers = ticketNumbers.OrderBy(x => x).ToList();
-                foreach (var ticketNumber in ticketNumbers)
+                foreach (var ticketNumber in statistics.SortedTicketNumbers)
                 {
                     var ticket = GetAssemblaTicket(ticketNumber, assemblaSpaceId, client);
                     if (ticket.StatusCode != HttpStatusCode.OK)
                     {
+                        statistics.RemoveTicketNumber(ticketNumber);
                         continue;
                     }
 
-                    successfulTicketCount++;
-                    points += ticket.Data.total_estimate;
+                    statistics.AddPoints(ticket.Data.total_estimate);
                     var ticketSummary = RemoveDoubleQuotesFrom(ticket.Data.summary);
 
                     const string twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph = "  ";
@@ -87,20 +64,14 @@ namespace ReleaseNotes
                 }
             }
 
-            GenerateStats(numberOfCommits, successfulTicketCount, lastCommitHash);
+            Console.WriteLine();
+            Console.WriteLine(statistics.ToString());
         }
 
         private static string RemoveDoubleQuotesFrom(string note)
         {
             // powershell cannot convert strings to json with double quotes resulting in the Slack message not being sent
             return note.Replace("\"", "");
-        }
-
-        private static void GenerateStats(int numberOfCommits, int numberOfTickets, string lastCommitHash)
-        {
-            Console.WriteLine();
-            Console.WriteLine("Commits: {0}. Tickets: {1}.", numberOfCommits, numberOfTickets);
-            Console.WriteLine("Hash: {0}", lastCommitHash);
         }
 
         private static IRestResponse<Space> GetAssemblaSpace(string assemblaSpaceId, RestClient client)
@@ -121,17 +92,6 @@ namespace ReleaseNotes
 
             var ticket = client.Execute<Ticket>(request);
             return ticket;
-        }
-
-        private static ICommitLog GetNewCommits(Repository repo, string branch)
-        {
-            var filter = new CommitFilter
-            {
-                IncludeReachableFrom = repo.Branches[string.Format("origin/{0}", branch)],
-                ExcludeReachableFrom = repo.Branches["origin/master"]
-            };
-            var commits = repo.Commits.QueryBy(filter);
-            return commits;
         }
 
         private static void Pull(Repository repo)
