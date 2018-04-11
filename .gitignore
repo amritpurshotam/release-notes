@@ -7,6 +7,7 @@
 *.sln.docstates
 
 ReleaseNotes/Settings.config
+ReleaseNotes/.vs/
 
 # Build results
 

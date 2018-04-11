@@ -53,6 +53,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assembla\Space.cs" />
+    <Compile Include="Jira\Fields.cs" />
+    <Compile Include="Jira\Issue.cs" />
+    <Compile Include="Jira\IssueType.cs" />
+    <Compile Include="Jira\JiraService.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Assembla\CustomFields.cs" />
     <Compile Include="Program.cs" />
