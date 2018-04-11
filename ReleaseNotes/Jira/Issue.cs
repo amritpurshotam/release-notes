@@ -12,5 +12,10 @@ namespace ReleaseNotes
         {
             get { return string.Format("https://purplegroup3.atlassian.net/browse/{0}", key); }
         }
+
+        public bool IsSubTask
+        {
+            get { return fields.IssueType.subtask; }
+        }
     }
 }

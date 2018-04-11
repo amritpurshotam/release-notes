@@ -8,11 +8,11 @@ namespace ReleaseNotes
 {
     public class Statistics
     {
-        private IList<int> TicketNumbers;
+        private IList<IssueId> IssueIds;
 
         public Statistics(ICommitLog commits)
         {
-            TicketNumbers = new List<int>();
+            IssueIds = new List<IssueId>();
             NumberOfCommits = 0;
             Points = 0;
             LastCommitSha = commits.First().Sha;
@@ -21,33 +21,33 @@ namespace ReleaseNotes
         }
 
         public int NumberOfCommits { get; private set; }
-        public int Points { get; private set; }
+        public decimal Points { get; private set; }
         public string LastCommitSha { get; private set; }
 
-        public IEnumerable<int> SortedTicketNumbers
+        public IEnumerable<IssueId> SortedIssueIds
         {
-            get { return TicketNumbers.OrderBy(x => x); }
+            get { return IssueIds.OrderBy(x => x.Number); }
         }
 
         public int TicketNumberCount
         {
-            get { return TicketNumbers.Count; }
+            get { return IssueIds.Count; }
         }
 
-        public void AddPoints(int points)
+        public void AddPoints(decimal points)
         {
             Points = Points + points;
         }
 
-        public void RemoveTicketNumber(int ticketNumber)
+        public void RemoveIssueId(IssueId issueId)
         {
-            TicketNumbers.Remove(ticketNumber);
+            IssueIds.Remove(issueId);
         }
 
         public override string ToString()
         {
-            return string.Format("Commits: {0}. Tickets: {1}.  \nSha: {2}.",
-                NumberOfCommits, TicketNumberCount, LastCommitSha);
+            return string.Format("Commits: {0}. Tickets: {1}. Points: {2}.  \nSha: {3}",
+                NumberOfCommits, TicketNumberCount, Points, LastCommitSha);
         }
 
         private void ProcessCommits(ICommitLog commits)
@@ -62,10 +62,11 @@ namespace ReleaseNotes
 
         private void AddTicketNumbersFrom(string message)
         {
-            var matches = Regex.Matches(message, "#\\d+");
+            var matches = Regex.Matches(message, "[A-Z]{2}-\\d+");
             foreach (Match match in matches)
             {
-                AddTicketNumber(match.Value);
+                var projectKey = new IssueId(match.Value);
+                AddIssueId(projectKey);
             }
         }
 
@@ -74,26 +75,17 @@ namespace ReleaseNotes
             NumberOfCommits = NumberOfCommits + 1;
         }
 
-        private void AddTicketNumber(string ticketNumberString)
+        private void AddIssueId(IssueId issueId)
         {
-            int ticketNumber;
-            if (Int32.TryParse(ticketNumberString.Replace("#", ""), out ticketNumber))
+            if (IsUnique(issueId))
             {
-                AddTicketNumber(ticketNumber);
+                IssueIds.Add(issueId);
             }
         }
 
-        private void AddTicketNumber(int ticketNumber)
+        private bool IsUnique(IssueId issueId)
         {
-            if (IsUnique(ticketNumber))
-            {
-                TicketNumbers.Add(ticketNumber);
-            }
-        }
-
-        private bool IsUnique(int ticketNumber)
-        {
-            return TicketNumbers.All(x => x != ticketNumber);
+            return IssueIds.All(x => x.Number != issueId.Number);
         }
 
         private string RemovePullRequestSubstring(string message)

@@ -3,6 +3,7 @@ using System.Net;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 using RestSharp;
+using RestSharp.Authenticators;
 
 namespace ReleaseNotes
 {
@@ -11,8 +12,7 @@ namespace ReleaseNotes
         static void Main(string[] args)
         {
             var gitRepositoryPath = args[0];
-            var assemblaSpaceId = args[1];
-            var branch = args[2];
+            var branch = args[1];
 
             var repo = new Repository(gitRepositoryPath);
             Pull(repo);
@@ -20,7 +20,7 @@ namespace ReleaseNotes
             var commits = GetNewCommitsFrom(repo, branch);
             var statistics = new Statistics(commits);
 
-            GenerateReleaseNotes(statistics, assemblaSpaceId);
+            GenerateReleaseNotes(statistics);
         }
 
         private static ICommitLog GetNewCommitsFrom(Repository repo, string branch)
@@ -34,32 +34,35 @@ namespace ReleaseNotes
             return commits;
         }
 
-        private static void GenerateReleaseNotes(Statistics statistics, string assemblaSpaceId)
+        private static void GenerateReleaseNotes(Statistics statistics)
         {
             ServicePointManager.Expect100Continue = true;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            var client = new RestClient("https://api.assembla.com/v1");
 
-            var space = GetAssemblaSpace(assemblaSpaceId, client);
-            if (space.ResponseStatus == ResponseStatus.Completed)
+            var client = new RestClient("https://purplegroup3.atlassian.net/rest/api/2");
+            client.Authenticator = new HttpBasicAuthenticator(Settings.JiraUsername, Settings.JiraPassword);
+            foreach (var issueId in statistics.SortedIssueIds)
             {
-                foreach (var ticketNumber in statistics.SortedTicketNumbers)
+                var request = new RestRequest(string.Format("issue/{0}", issueId));
+                var issue = client.Execute<Issue>(request);
+                if (issue.StatusCode != HttpStatusCode.OK)
                 {
-                    var ticket = GetAssemblaTicket(ticketNumber, assemblaSpaceId, client);
-                    if (ticket.StatusCode != HttpStatusCode.OK)
-                    {
-                        statistics.RemoveTicketNumber(ticketNumber);
-                        continue;
-                    }
-
-                    statistics.AddPoints(ticket.Data.total_estimate);
-                    var ticketSummary = RemoveDoubleQuotesFrom(ticket.Data.summary);
-
-                    const string twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph = "  ";
-                    Console.WriteLine("[#{0}](https://{1}.assembla.com/spaces/{2}/tickets/{0}) - {3}{4}",
-                        ticketNumber, Settings.AssemblaSubDomain, space.Data.wiki_name,
-                        ticketSummary, twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph);
+                    statistics.RemoveIssueId(issueId);
+                    continue;
                 }
+
+                if (issue.Data.IsSubTask)
+                {
+                    statistics.RemoveIssueId(issueId);
+                    continue;
+                }
+
+                statistics.AddPoints(issue.Data.fields.customfield_10014);
+                var ticketSummary = RemoveDoubleQuotesFrom(issue.Data.fields.summary);
+
+                const string twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph = "  ";
+                Console.WriteLine("[{0}]({1}) - {2}{3}",
+                    issueId, issue.Data.Url, ticketSummary, twoSpacesNeededForMarkdownToMakeANewLineInSameParagraph);
             }
 
             Console.WriteLine();
@@ -70,26 +73,6 @@ namespace ReleaseNotes
         {
             // powershell cannot convert strings to json with double quotes resulting in the Slack message not being sent
             return note.Replace("\"", "");
-        }
-
-        private static IRestResponse<Space> GetAssemblaSpace(string assemblaSpaceId, RestClient client)
-        {
-            var request = new RestRequest(string.Format("spaces/{0}", assemblaSpaceId));
-            request.AddHeader("X-Api-Key", Settings.AssemblaApiKey);
-            request.AddHeader("X-Api-Secret", Settings.AssemblaApiSecret);
-
-            var space = client.Execute<Space>(request);
-            return space;
-        }
-
-        private static IRestResponse<Ticket> GetAssemblaTicket(int ticketNumber, string assemblaSpaceId, RestClient client)
-        {
-            var request = new RestRequest(string.Format("spaces/{0}/tickets/{1}", assemblaSpaceId, ticketNumber));
-            request.AddHeader("X-Api-Key", Settings.AssemblaApiKey);
-            request.AddHeader("X-Api-Secret", Settings.AssemblaApiSecret);
-
-            var ticket = client.Execute<Ticket>(request);
-            return ticket;
         }
 
         private static void Pull(Repository repo)
